@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maaş Hesap</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1d6fe0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Maaş Hesap">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#667085;--bd:#e3e6ea;--ac:#1d6fe0;--ok:#0f8a4f;--ng:#c0392b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--tx:#eceff3;--mu:#98a2b3;--bd:#2c323a;--ac:#5b9dff;--ok:#43c98a;--ng:#ff7a6b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--tx:#eceff3;--mu:#98a2b3;--bd:#2c323a;--ac:#5b9dff;--ok:#43c98a;--ng:#ff7a6b;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:14px;color:var(--mu);margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em}
+label{display:block;font-size:14px;margin:10px 0 4px}
+input{width:100%;box-sizing:border-box;padding:11px;font-size:16px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx)}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.r{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd)}
+.r:last-child{border:0}
+.r span:first-child{color:var(--mu)}
+.tot{font-size:26px;font-weight:700;color:var(--ok);text-align:center;margin:6px 0}
+.ng{color:var(--ng)}
+small{color:var(--mu);display:block;margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+<h1>Maaş Hesap</h1>
+
+<div class="card">
+<h2>Çalışma bilgileri</h2>
+<label>Günlük ücret (₺, brüt)</label>
+<input id="gun" type="number" inputmode="decimal" placeholder="Örn. 1500">
+<div class="g">
+<div><label>Ödenen gün (ay)</label><input id="gsay" type="number" inputmode="decimal" value="30"></div>
+<div><label>Günlük çalışma saati</label><input id="gsaat" type="number" inputmode="decimal" value="10"></div>
+<div><label>Fazla mesai (saat)</label><input id="mesai" type="number" inputmode="decimal" value="0"></div>
+<div><label>Hafta sonu çalışılan gün</label><input id="hs" type="number" inputmode="decimal" value="0"></div>
+</div>
+<label>Resmi tatilde çalışılan gün</label>
+<input id="gt" type="number" inputmode="decimal" value="0">
+</div>
+
+<div class="card">
+<h2>Oranlar (değiştirilebilir)</h2>
+<div class="g">
+<div><label>Mesai çarpanı</label><input id="cm" type="number" step="0.05" value="1.5"></div>
+<div><label>Hafta sonu çarpanı</label><input id="ch" type="number" step="0.05" value="1.5"></div>
+<div><label>Resmi tatil çarpanı</label><input id="cg" type="number" step="0.05" value="1.5"></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Sonuç</h2>
+<div class="tot" id="net">₺0,00</div>
+<div style="text-align:center;color:var(--mu);margin-bottom:8px">toplam maaş</div>
+<div class="r"><span>Temel maaş</span><b id="a1">0</b></div>
+<div class="r"><span>Fazla mesai</span><b id="a2">0</b></div>
+<div class="r"><span>Hafta sonu çalışması</span><b id="a3">0</b></div>
+<div class="r"><span>Resmi tatil çalışması</span><b id="a4">0</b></div>
+<label>Yatan maaş (bankaya yatan, ₺)</label>
+<input id="yat" type="number" inputmode="decimal" placeholder="Örn. 17002">
+<div class="r" style="margin-top:10px"><span>Nakit ödeme</span><b id="nak">0</b></div>
+<small>Nakit ödeme = toplam maaş − yatan maaş.</small>
+<small>Hafta sonu: çalışılan gün × günlük ücret × çarpan. Resmi tatil: çalışılan gün × günlük ücret × çarpan (varsayılan 1,5). Saatlik ücret = günlük ücret ÷ günlük saat. Vergi ve kesinti hesaplanmaz.</small>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const f=n=>"₺"+n.toLocaleString("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const v=id=>parseFloat($(id).value)||0;
+function hesapla(){
+const g=v("gun"),saatlik=v("gsaat")>0?g/v("gsaat"):0;
+const t=g*v("gsay"),m=saatlik*v("mesai")*v("cm"),h=g*v("hs")*v("ch"),gt=g*v("gt")*v("cg");
+const br=t+m+h+gt;
+$("a1").textContent=f(t);$("a2").textContent=f(m);$("a3").textContent=f(h);$("a4").textContent=f(gt);
+$("net").textContent=f(br);$("nak").textContent=f(br-v("yat"));
+}
+document.querySelectorAll("input").forEach(i=>i.addEventListener("input",hesapla));
+hesapla();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script>
+</body>
+</html>
